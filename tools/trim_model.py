@@ -12,8 +12,15 @@ import torch
 import utils
 from transformers import MBartForConditionalGeneration, MBartTokenizer, MBartConfig
 
-print("Loading dataset...")
-raw_data = utils.load_dataset_file('data/Phonexi-2014T/labels.train')
+import yaml
+
+config_path = 'configs/config_gloss_free.yaml'
+with open(config_path, 'r') as f:
+    config = yaml.safe_load(f)
+train_label_path = config['data']['train_label_path']
+
+print(f"Loading dataset from {train_label_path} ...")
+raw_data = utils.load_dataset_file(train_label_path)
 sentences = [v['text'] for v in raw_data.values()]
 print(f"Loaded {len(sentences)} training sentences.")
 
