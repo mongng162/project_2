@@ -308,6 +308,7 @@ class gloss_free_model(nn.Module):
         self.backbone = FeatureExtracter(frozen=_('freeze_backbone', False))
         # self.mbart = MBartForConditionalGeneration.from_pretrained(config['model']['visual_encoder'])
         self.mbart = config_decoder(config)
+        self.mbart.gradient_checkpointing_enable()  # Save GPU memory by recomputing activations
  
         if config['model']['sign_proj']:
             self.sign_emb = V_encoder(emb_size=embed_dim,feature_size=embed_dim, config = config)

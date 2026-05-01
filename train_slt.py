@@ -215,6 +215,24 @@ def main(args, config):
     model.to(device)
     print(model)
 
+    # Load ID mapping for trimmed vocab (if available)
+    import json as _json
+    _mapping_path = os.path.join(config['model']['tokenizer'], 'id_mapping.json')
+    if os.path.exists(_mapping_path):
+        with open(_mapping_path, 'r') as f:
+            _raw = _json.load(f)
+        old_to_new = {int(k): v for k, v in _raw.items()}
+        new_to_old = {v: k for k, v in old_to_new.items()}
+        # Remap the vi_VN language code ID for generation
+        vi_VN_orig = tokenizer.lang_code_to_id['vi_VN']
+        vi_VN_trimmed = old_to_new.get(vi_VN_orig, vi_VN_orig)
+        print(f"ID mapping loaded: vi_VN orig={vi_VN_orig} → trimmed={vi_VN_trimmed}")
+    else:
+        old_to_new = None
+        new_to_old = None
+        vi_VN_trimmed = tokenizer.lang_code_to_id['vi_VN']
+        print("No ID mapping found, using original token IDs")
+
     if args.finetune:
         print('***********************************')
         print('Load parameters for Visual Encoder...')
@@ -435,7 +453,7 @@ def evaluate(args, dev_dataloader, model, model_without_ddp, tokenizer, criterio
             
             with autocast('cuda'):
                 output = model_without_ddp.generate(src_input, max_new_tokens=150, num_beams = 4,
-                            decoder_start_token_id=tokenizer.lang_code_to_id['vi_VN']
+                            decoder_start_token_id=vi_VN_trimmed
                             )
 
             tgt_input['input_ids'] = tgt_input['input_ids'].to(device)
@@ -446,13 +464,25 @@ def evaluate(args, dev_dataloader, model, model_without_ddp, tokenizer, criterio
             if (step+1) % 10 == 0 and args.visualize and utils.is_main_process():
                 utils.visualization(model_without_ddp.visualize())
 
-    pad_tensor = torch.ones(200-len(tgt_pres[0])).to(device)
-    tgt_pres[0] = torch.cat((tgt_pres[0],pad_tensor.long()),dim = 0)
-    tgt_pres = pad_sequence(tgt_pres,batch_first=True,padding_value=PAD_IDX)
+    # Reverse-map trimmed IDs to original IDs for tokenizer.batch_decode
+    if new_to_old is not None:
+        def _reverse_map(tensor):
+            result = tensor.clone()
+            for new_id, orig_id in new_to_old.items():
+                result[tensor == new_id] = orig_id
+            return result
+        tgt_pres = pad_sequence(tgt_pres,batch_first=True,padding_value=PAD_IDX)
+        tgt_refs = pad_sequence(tgt_refs,batch_first=True,padding_value=PAD_IDX)
+        tgt_pres = _reverse_map(tgt_pres)
+        tgt_refs = _reverse_map(tgt_refs)
+    else:
+        pad_tensor = torch.ones(200-len(tgt_pres[0])).to(device)
+        tgt_pres[0] = torch.cat((tgt_pres[0],pad_tensor.long()),dim = 0)
+        tgt_pres = pad_sequence(tgt_pres,batch_first=True,padding_value=PAD_IDX)
 
-    pad_tensor = torch.ones(200-len(tgt_refs[0])).to(device)
-    tgt_refs[0] = torch.cat((tgt_refs[0],pad_tensor.long()),dim = 0)
-    tgt_refs = pad_sequence(tgt_refs,batch_first=True,padding_value=PAD_IDX)
+        pad_tensor = torch.ones(200-len(tgt_refs[0])).to(device)
+        tgt_refs[0] = torch.cat((tgt_refs[0],pad_tensor.long()),dim = 0)
+        tgt_refs = pad_sequence(tgt_refs,batch_first=True,padding_value=PAD_IDX)
 
     tgt_pres = tokenizer.batch_decode(tgt_pres, skip_special_tokens=True)
     tgt_refs = tokenizer.batch_decode(tgt_refs, skip_special_tokens=True)

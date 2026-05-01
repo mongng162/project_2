@@ -71,6 +71,18 @@ class S2T_Dataset(Dataset.Dataset):
         self.img_path = config['data']['img_path']
         self.phase = phase
         self.max_length = config['data']['max_length']
+
+        # Load ID mapping for trimmed vocabulary (if available)
+        import json
+        mapping_path = os.path.join(config['model']['tokenizer'], 'id_mapping.json')
+        if os.path.exists(mapping_path):
+            with open(mapping_path, 'r') as f:
+                raw_map = json.load(f)
+            self.id_mapping = {int(k): v for k, v in raw_map.items()}
+            logger.info(f"[{phase}] Loaded ID mapping with {len(self.id_mapping)} tokens")
+        else:
+            self.id_mapping = None
+            logger.info(f"[{phase}] No ID mapping found, using original token IDs")
         
         self.list = [key for key,value in self.raw_data.items()]
         
@@ -200,6 +212,11 @@ class S2T_Dataset(Dataset.Dataset):
         
         # NEW
         tgt_input = self.tokenizer(text_target=tgt_batch, return_tensors="pt", padding=True, truncation=True)
+
+        # Remap token IDs if vocabulary was trimmed
+        if self.id_mapping is not None:
+            tgt_input['input_ids'] = self._remap_ids(tgt_input['input_ids'])
+
         src_input = {}
         src_input['input_ids'] = img_batch
         src_input['attention_mask'] = img_padding_mask
@@ -212,8 +229,17 @@ class S2T_Dataset(Dataset.Dataset):
             masked_tgt = utils.NoiseInjecting(tgt_batch, self.args.noise_rate, noise_type=self.args.noise_type, random_shuffle=self.args.random_shuffle, is_train=(self.phase=='train'))
             # NEW
             masked_tgt_input = self.tokenizer(text_target=masked_tgt, return_tensors="pt", padding=True, truncation=True)
+            if self.id_mapping is not None:
+                masked_tgt_input['input_ids'] = self._remap_ids(masked_tgt_input['input_ids'])
             return src_input, tgt_input, masked_tgt_input
         return src_input, tgt_input
+
+    def _remap_ids(self, input_ids):
+        """Remap original MBart token IDs to trimmed vocabulary IDs."""
+        remapped = input_ids.clone()
+        for old_id, new_id in self.id_mapping.items():
+            remapped[input_ids == old_id] = new_id
+        return remapped
 
     def __str__(self):
         return f'#total {self.phase} set: {len(self.list)}.'
