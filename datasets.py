@@ -104,7 +104,7 @@ class S2T_Dataset(Dataset.Dataset):
         # self.seq = SomeOf(self.seq_geo, self.seq_color)
 
     def __len__(self):
-        return len(self.raw_data)
+        return len(self.list)
     
     def __getitem__(self, index):
         key = self.list[index]
