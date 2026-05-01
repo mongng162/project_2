@@ -311,9 +311,9 @@ def main(args, config):
     if args.eval:
         if not args.resume:
             logger.warning('Please specify the trained model: --resume /path/to/best_checkpoint.pth')
-        test_stats = evaluate(args, dev_dataloader, model, model_without_ddp, tokenizer, criterion, config, UNK_IDX, SPECIAL_SYMBOLS, PAD_IDX, device)
+        test_stats = evaluate(args, dev_dataloader, model, model_without_ddp, tokenizer, criterion, config, UNK_IDX, SPECIAL_SYMBOLS, PAD_IDX, device, vi_VN_trimmed, new_to_old)
         print(f"BELU-4 of the network on the {len(dev_dataloader)} dev videos: {test_stats['belu4']:.2f} ")
-        test_stats = evaluate(args, test_dataloader, model, model_without_ddp, tokenizer, criterion, config, UNK_IDX, SPECIAL_SYMBOLS, PAD_IDX, device)
+        test_stats = evaluate(args, test_dataloader, model, model_without_ddp, tokenizer, criterion, config, UNK_IDX, SPECIAL_SYMBOLS, PAD_IDX, device, vi_VN_trimmed, new_to_old)
         print(f"BELU-4 of the network on the {len(test_dataloader)} test videos: {test_stats['belu4']:.2f}")
         return
 
@@ -338,7 +338,7 @@ def main(args, config):
                     'epoch': epoch,
                 }, checkpoint_path)
         
-        test_stats = evaluate(args, dev_dataloader, model, model_without_ddp, tokenizer, criterion, config, UNK_IDX, SPECIAL_SYMBOLS, PAD_IDX, device)
+        test_stats = evaluate(args, dev_dataloader, model, model_without_ddp, tokenizer, criterion, config, UNK_IDX, SPECIAL_SYMBOLS, PAD_IDX, device, vi_VN_trimmed, new_to_old)
         print(f"BELU-4 of the network on the {len(dev_dataloader)} dev videos: {test_stats['belu4']:.2f}")
 
         if max_accuracy < test_stats["belu4"]:
@@ -373,10 +373,10 @@ def main(args, config):
         checkpoint = torch.load(args.output_dir+'/best_checkpoint.pth', map_location='cpu')
         model_without_ddp.load_state_dict(checkpoint['model'], strict=True)
 
-        test_stats = evaluate(args, dev_dataloader, model, model_without_ddp, tokenizer, criterion, config, UNK_IDX, SPECIAL_SYMBOLS, PAD_IDX, device)
+        test_stats = evaluate(args, dev_dataloader, model, model_without_ddp, tokenizer, criterion, config, UNK_IDX, SPECIAL_SYMBOLS, PAD_IDX, device, vi_VN_trimmed, new_to_old)
         print(f"BELU-4 of the network on the {len(dev_dataloader)} dev videos: {test_stats['belu4']:.2f}")
         
-        test_stats = evaluate(args, test_dataloader, model, model_without_ddp, tokenizer, criterion, config, UNK_IDX, SPECIAL_SYMBOLS, PAD_IDX, device)
+        test_stats = evaluate(args, test_dataloader, model, model_without_ddp, tokenizer, criterion, config, UNK_IDX, SPECIAL_SYMBOLS, PAD_IDX, device, vi_VN_trimmed, new_to_old)
         print(f"BELU-4 of the network on the {len(test_dataloader)} test videos: {test_stats['belu4']:.2f}")
 
     total_time = time.time() - start_time
@@ -427,7 +427,7 @@ def train_one_epoch(args, model: torch.nn.Module, criterion: nn.CrossEntropyLoss
 
     return  {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
-def evaluate(args, dev_dataloader, model, model_without_ddp, tokenizer, criterion,  config, UNK_IDX, SPECIAL_SYMBOLS, PAD_IDX, device):
+def evaluate(args, dev_dataloader, model, model_without_ddp, tokenizer, criterion,  config, UNK_IDX, SPECIAL_SYMBOLS, PAD_IDX, device, vi_VN_trimmed, new_to_old):
     model.eval()
 
     metric_logger = utils.MetricLogger(delimiter="  ")
