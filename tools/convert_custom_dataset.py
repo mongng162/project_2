@@ -30,8 +30,8 @@ import random
 # ─────────────────────────────────────────────
 # CONFIGURE THESE PATHS FOR YOUR SETUP
 # ─────────────────────────────────────────────
-CHECKPOINT_JSON = '/kaggle/input/<your-dataset>/dataset/checkpoint.json'
-FRAMES_BASE_DIR = '/kaggle/input/<your-dataset>/frames/'  # root of the frames folder
+CHECKPOINT_JSON = '/kaggle/input/datasets/mongnguynkin/vsl-signlanguage/_output_/data/custom/dataset/checkpoint.json'
+FRAMES_BASE_DIR = '/kaggle/input/datasets/mongnguynkin/vsl-signlanguage/_output_/data/custom/frames/'  # root of the frames folder
 OUTPUT_DIR      = 'data/custom'
 
 # Train / Dev / Test split ratio
