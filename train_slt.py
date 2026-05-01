@@ -209,7 +209,7 @@ def main(args, config):
                                  pin_memory=args.pin_mem)
     
     print(f"Creating model:")
-    tokenizer = MBartTokenizer.from_pretrained(config['model']['tokenizer'], src_lang = 'de_DE', tgt_lang = 'de_DE')
+    tokenizer = MBartTokenizer.from_pretrained(config['model']['tokenizer'], src_lang = 'vi_VN', tgt_lang = 'vi_VN')
     model = gloss_free_model(config, args)
     model.to(device)
     print(model)
@@ -428,7 +428,7 @@ def evaluate(args, dev_dataloader, model, model_without_ddp, tokenizer, criterio
             metric_logger.update(loss=total_loss.item())
             
             output = model_without_ddp.generate(src_input, max_new_tokens=150, num_beams = 4,
-                        decoder_start_token_id=tokenizer.lang_code_to_id['de_DE']
+                        decoder_start_token_id=tokenizer.lang_code_to_id['vi_VN']
                         )
 
             tgt_input['input_ids'] = tgt_input['input_ids'].to(device)
