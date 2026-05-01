@@ -4,7 +4,8 @@ from transformers import MBartForConditionalGeneration, MBartTokenizer, MBartCon
 from hftrim.ModelTrimmers import MBartTrimmer
 
 import sys
-sys.path.append('.') # Add the root directory to path to find utils.py
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))) # Force root directory to the front to avoid importing global 'utils' package
 import utils
 from hftrim.TokenizerTrimmer import TokenizerTrimmer
 
