@@ -3,6 +3,8 @@ from transformers import MBartForConditionalGeneration, MBartTokenizer, MBartCon
 
 from hftrim.ModelTrimmers import MBartTrimmer
 
+import sys
+sys.path.append('.') # Add the root directory to path to find utils.py
 import utils
 from hftrim.TokenizerTrimmer import TokenizerTrimmer
 
