@@ -149,7 +149,8 @@ class TextCLIP(nn.Module):
         self.lm_head = make_head(inplanes, planes, head_type)
 
     def forward(self, tgt_input):
-        txt_logits = self.model_txt(input_ids=tgt_input['input_ids'].cuda(), attention_mask=tgt_input['attention_mask'].cuda())[0]
+        device = next(self.parameters()).device
+        txt_logits = self.model_txt(input_ids=tgt_input['input_ids'].to(device), attention_mask=tgt_input['attention_mask'].to(device))[0]
         output = txt_logits[torch.arange(txt_logits.shape[0]), tgt_input['input_ids'].argmax(dim=-1)]
         return self.lm_head(output), txt_logits
 
@@ -165,8 +166,8 @@ class ImageCLIP(nn.Module):
         self.lm_head = make_head(inplanes, planes, head_type)
         
     def forward(self, src_input):
-       
-        x = self.model(src_input['input_ids'].cuda(), src_input['src_length_batch']) # [b, n, c]
+        device = next(self.parameters()).device
+        x = self.model(src_input['input_ids'].to(device), src_input['src_length_batch']) # [b, n, c]
         attention_mask = src_input['attention_mask']
 
         B, N, C = x.shape
@@ -174,7 +175,7 @@ class ImageCLIP(nn.Module):
         x = torch.cat((cls_token, x), dim=1)
         attention_mask = F.pad(attention_mask.flatten(1), (1, 0), value=1.)  # [b, 64] --> [b, 65]
 
-        outs = self.trans_encoder(inputs_embeds=x, attention_mask=attention_mask.cuda(), return_dict=True)
+        outs = self.trans_encoder(inputs_embeds=x, attention_mask=attention_mask.to(device), return_dict=True)
         last_hidden_state = outs['last_hidden_state']
         output = self.lm_head(last_hidden_state[:, 0, :])
         return output
@@ -188,15 +189,16 @@ class Text_Decoder(nn.Module):
 
     
     def forward(self, tgt_input, masked_tgt_input, model_txt):
+        device = next(self.parameters()).device
         with torch.no_grad():
             _, encoder_hidden_states = model_txt(masked_tgt_input)
 
-        decoder_input_ids = shift_tokens_right(tgt_input['input_ids'].cuda(), self.text_decoder.config.pad_token_id)
+        decoder_input_ids = shift_tokens_right(tgt_input['input_ids'].to(device), self.text_decoder.config.pad_token_id)
         decoder_out = self.text_decoder(
                     input_ids = decoder_input_ids,
-                    attention_mask = tgt_input['attention_mask'].cuda(),
+                    attention_mask = tgt_input['attention_mask'].to(device),
                     encoder_hidden_states = encoder_hidden_states,
-                    encoder_attention_mask = masked_tgt_input['attention_mask'].cuda(),
+                    encoder_attention_mask = masked_tgt_input['attention_mask'].to(device),
                     return_dict = True,
                     )
         lm_logits = self.lm_head(decoder_out[0]) + self.final_logits_bias
@@ -315,8 +317,8 @@ class gloss_free_model(nn.Module):
             self.embed_scale = 1.0
         
     def share_forward(self, src_input):
-        
-        frames_feature = self.backbone(src_input['input_ids'].cuda(), src_input['src_length_batch'])
+        device = next(self.parameters()).device
+        frames_feature = self.backbone(src_input['input_ids'].to(device), src_input['src_length_batch'])
         attention_mask = src_input['attention_mask']
 
         inputs_embeds = self.sign_emb(frames_feature)
@@ -325,24 +327,25 @@ class gloss_free_model(nn.Module):
         return inputs_embeds, attention_mask
 
     def forward(self,src_input, tgt_input ):
-        
+        device = next(self.parameters()).device
         inputs_embeds, attention_mask = self.share_forward(src_input)
 
         out = self.mbart(inputs_embeds = inputs_embeds,
-                    attention_mask = attention_mask.cuda(),
-                    # decoder_input_ids = tgt_input['input_ids'].cuda(),
-                    labels = tgt_input['input_ids'].cuda(),
-                    decoder_attention_mask = tgt_input['attention_mask'].cuda(),
+                    attention_mask = attention_mask.to(device),
+                    # decoder_input_ids = tgt_input['input_ids'].to(device),
+                    labels = tgt_input['input_ids'].to(device),
+                    decoder_attention_mask = tgt_input['attention_mask'].to(device),
                     return_dict = True,
                     )
         return out['logits']
     
 
     def generate(self,src_input,max_new_tokens,num_beams,decoder_start_token_id ):
+        device = next(self.parameters()).device
         inputs_embeds, attention_mask = self.share_forward(src_input)
 
         out = self.mbart.generate(inputs_embeds = inputs_embeds,
-                    attention_mask = attention_mask.cuda(),max_new_tokens=max_new_tokens,num_beams = num_beams,
-                                decoder_start_token_id=decoder_start_token_id
+                    attention_mask = attention_mask.to(device),max_new_tokens=max_new_tokens,num_beams = num_beams,
+                                 decoder_start_token_id=decoder_start_token_id
                             )
         return out
