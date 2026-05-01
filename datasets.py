@@ -72,7 +72,15 @@ class S2T_Dataset(Dataset.Dataset):
         self.phase = phase
         self.max_length = config['data']['max_length']
         
-        self.list = [key for key,value in self.raw_data.items()]   
+        self.list = [key for key,value in self.raw_data.items()]
+        
+        # Optional: limit to a subset for quick experimentation
+        max_samples = config['data'].get('max_samples', None)
+        if max_samples is not None:
+            self.list = self.list[:max_samples]
+            logger.info(f"[{phase}] Using {len(self.list)} samples (max_samples={max_samples})")
+        else:
+            logger.info(f"[{phase}] Using all {len(self.list)} samples")
 
         sometimes = lambda aug: va.Sometimes(0.5, aug) # Used to apply augmentor with 50% probability
         self.seq = va.Sequential([
