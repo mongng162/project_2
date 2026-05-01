@@ -370,8 +370,13 @@ def main(args, config):
     # Last epoch
     test_on_last_epoch = True
     if test_on_last_epoch and args.output_dir:
-        checkpoint = torch.load(args.output_dir+'/best_checkpoint.pth', map_location='cpu')
-        model_without_ddp.load_state_dict(checkpoint['model'], strict=True)
+        best_ckpt = args.output_dir+'/best_checkpoint.pth'
+        if os.path.exists(best_ckpt):
+            checkpoint = torch.load(best_ckpt, map_location='cpu')
+            model_without_ddp.load_state_dict(checkpoint['model'], strict=True)
+            print("Loaded best checkpoint for final evaluation")
+        else:
+            print("No best_checkpoint.pth found, using last epoch weights for final eval")
 
         test_stats = evaluate(args, dev_dataloader, model, model_without_ddp, tokenizer, criterion, config, UNK_IDX, SPECIAL_SYMBOLS, PAD_IDX, device, vi_VN_trimmed, new_to_old)
         print(f"BELU-4 of the network on the {len(dev_dataloader)} dev videos: {test_stats['belu4']:.2f}")
