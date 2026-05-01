@@ -66,33 +66,27 @@ def main():
     # ── Build the GFSLT-VLP dictionary format ──
     converted = {}
     skipped = 0
+    missing_count = 0
     for entry in samples:
         video_id    = str(entry['video_id'])
         text        = str(entry['text'])
         frame_paths = entry['frame_paths']
 
-        # Make frame_paths relative to FRAMES_BASE_DIR
-        # The S2T_Dataset will prepend img_path (=FRAMES_BASE_DIR) to each path
-        # So we need: img_path + relative_path = full path to image
         relative_paths = []
         for fp in frame_paths:
-            # If frame_paths are already relative (e.g. "D0002/img001.png"), use as-is
-            # If they are absolute, strip the FRAMES_BASE_DIR prefix
+            # Frame paths may be absolute (e.g. /kaggle/working/data/custom/frames/...)
+            # We remap them to be relative to FRAMES_BASE_DIR
             if os.path.isabs(fp):
-                rel = os.path.relpath(fp, FRAMES_BASE_DIR)
+                # Extract just the video_id/filename part (last 2 components)
+                parts = fp.replace('\\', '/').split('/')
+                # e.g. ['', 'kaggle', 'working', 'data', 'custom', 'frames', 'D0001N', '000000.jpg']
+                # Take the last 2 parts: video_folder/filename
+                rel = '/'.join(parts[-2:])
             else:
-                # Strip leading "frames/" prefix if present
                 rel = fp.lstrip('/')
                 if rel.startswith('frames/'):
                     rel = rel[len('frames/'):]
             relative_paths.append(rel)
-
-        # Verify at least the first frame exists
-        first_frame = os.path.join(FRAMES_BASE_DIR, relative_paths[0])
-        if not os.path.exists(first_frame):
-            print(f"  [WARN] Skipping {video_id}: frame not found at {first_frame}")
-            skipped += 1
-            continue
 
         converted[video_id] = {
             'name':      video_id,
@@ -102,6 +96,11 @@ def main():
         }
 
     print(f"\nConverted: {len(converted)} | Skipped: {skipped}")
+    print(f"\nSample relative path: {list(converted.values())[0]['imgs_path'][0]}")
+    print(f"Full path that will be tried: {FRAMES_BASE_DIR}{list(converted.values())[0]['imgs_path'][0]}")
+    # Quick sanity check
+    test_path = FRAMES_BASE_DIR + list(converted.values())[0]['imgs_path'][0]
+    print(f"Path exists? {os.path.exists(test_path)}")
 
     # ── Split into train / dev / test ──
     keys = list(converted.keys())
