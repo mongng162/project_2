@@ -70,7 +70,11 @@ class TokenizerTrimmer:
     def load_spm(self, load_path=None):
         load_path = os.path.join('/tmp', self.uid) if load_path == None else load_path
         files = glob.glob(f'{load_path}/*.model')
-        assert len(files)>0, "ERROR: No sentencepiece model found in {load_path}!"
+        if len(files) == 0:
+            print(f"Files in {load_path}: {os.listdir(load_path)}")
+            # Sometimes transformers saves it as spiece.model or similar without .model extension?
+            # Actually, sometimes MBart doesn't save the .model if the tokenizer was modified in memory without the spm file loaded.
+        assert len(files)>0, f"ERROR: No sentencepiece model found in {load_path}! Files: {os.listdir(load_path)}"
         assert len(files)==1, "ERROR: Found more than one sentencepiece model in {load_path}!"
 
         spm_fname = files[0]
