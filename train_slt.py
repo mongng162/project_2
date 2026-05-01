@@ -254,7 +254,17 @@ def main(args, config):
                         new_state_dict[k] = v
             
         # *replace the word embedding
-        model_dict = torch.load(config['model']['transformer']+'/pytorch_model.bin', map_location='cpu')
+        _transformer_dir = config['model']['transformer']
+        _bin_path = _transformer_dir + '/pytorch_model.bin'
+        _safetensors_path = _transformer_dir + '/model.safetensors'
+        if os.path.exists(_bin_path):
+            model_dict = torch.load(_bin_path, map_location='cpu')
+        elif os.path.exists(_safetensors_path):
+            from safetensors.torch import load_file
+            model_dict = load_file(_safetensors_path)
+        else:
+            print(f"WARNING: No model weights found in {_transformer_dir}, skipping embed loading")
+            model_dict = {}
         for k, v in model_dict.items():
             if 'decoder.embed_tokens.weight' in k:
                 k = 'mbart.' + k
