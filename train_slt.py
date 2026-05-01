@@ -468,10 +468,13 @@ def evaluate(args, dev_dataloader, model, model_without_ddp, tokenizer, criterio
         with open(args.output_dir+'/tmp_refs.txt','w') as f:
             for i in range(len(tgt_refs)):
                 f.write(tgt_refs[i]+'\n')
-        print('\n'+'*'*80)
-        metrics_dict = compute_metrics(hypothesis=args.output_dir+'/tmp_pres.txt',
-                           references=[args.output_dir+'/tmp_refs.txt'],no_skipthoughts=True,no_glove=True)
-        print('*'*80)
+        if 'compute_metrics' in globals():
+            print('\n'+'*'*80)
+            metrics_dict = compute_metrics(hypothesis=args.output_dir+'/tmp_pres.txt',
+                               references=[args.output_dir+'/tmp_refs.txt'],no_skipthoughts=True,no_glove=True)
+            print('*'*80)
+        else:
+            print("nlgeval not installed, skipping additional metrics computation.")
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 if __name__ == '__main__':
