@@ -34,7 +34,10 @@ try:
 except:
     pass
 from itertools import groupby
-import tensorflow as tf
+try:
+    import tensorflow as tf
+except ImportError:
+    tf = None
 
 import matplotlib.pyplot as plt  # For graphics
 import seaborn as sns
@@ -401,6 +404,8 @@ def GlossPadding(input_ids, gt_gloss, attention_mask):
     return torch.tensor(new_input_ids), torch.tensor(new_gt_gloss), torch.tensor(new_mask)
 
 def ctc_decode(gloss_probabilities,sgn_lengths):
+    if tf is None:
+        raise ImportError("tensorflow is required for ctc_decode. Install it with: pip install tensorflow")
     gloss_probabilities = gloss_probabilities.cpu().detach().numpy()
     # tf_gloss_probabilities = np.concatenate(
     #     (gloss_probabilities[:, :, 1:], gloss_probabilities[:, :, 0, None]),
