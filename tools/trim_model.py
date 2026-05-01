@@ -1,11 +1,11 @@
 
 from transformers import MBartForConditionalGeneration, MBartTokenizer, MBartConfig
 
-from hftrim.ModelTrimmers import MBartTrimmer
-
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))) # Force root directory to the front to avoid importing global 'utils' package
+
+from hftrim.ModelTrimmers import MBartTrimmer
 import utils
 from hftrim.TokenizerTrimmer import TokenizerTrimmer
 
