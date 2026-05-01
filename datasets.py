@@ -185,9 +185,9 @@ class S2T_Dataset(Dataset.Dataset):
             mask_gen.append(tmp)
         mask_gen = pad_sequence(mask_gen, padding_value=PAD_IDX,batch_first=True)
         img_padding_mask = (mask_gen != PAD_IDX).long()
-        with self.tokenizer.as_target_tokenizer():
-            tgt_input = self.tokenizer(tgt_batch, return_tensors="pt",padding = True,  truncation=True)
-
+        
+        # NEW
+        tgt_input = self.tokenizer(text_target=tgt_batch, return_tensors="pt", padding=True, truncation=True)
         src_input = {}
         src_input['input_ids'] = img_batch
         src_input['attention_mask'] = img_padding_mask
@@ -198,8 +198,8 @@ class S2T_Dataset(Dataset.Dataset):
         
         if self.training_refurbish:
             masked_tgt = utils.NoiseInjecting(tgt_batch, self.args.noise_rate, noise_type=self.args.noise_type, random_shuffle=self.args.random_shuffle, is_train=(self.phase=='train'))
-            with self.tokenizer.as_target_tokenizer():
-                masked_tgt_input = self.tokenizer(masked_tgt, return_tensors="pt", padding = True,  truncation=True)
+            # NEW
+            masked_tgt_input = self.tokenizer(text_target=masked_tgt, return_tensors="pt", padding=True, truncation=True)
             return src_input, tgt_input, masked_tgt_input
         return src_input, tgt_input
 

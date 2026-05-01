@@ -26,7 +26,12 @@ from transformers.modeling_outputs import (
 )
 from transformers.models.mbart.modeling_mbart import shift_tokens_right
 
-from transformers.models.mbart.modeling_mbart import MBartLearnedPositionalEmbedding, MBartEncoderLayer, _expand_mask
+# Dòng mới
+from transformers.models.mbart.modeling_mbart import MBartLearnedPositionalEmbedding, MBartEncoderLayer
+from transformers.modeling_attn_mask_utils import AttentionMaskConverter
+
+def _expand_mask(mask, dtype, tgt_len=None):
+    return AttentionMaskConverter._expand_mask(mask, dtype, tgt_len)
 
 from collections import OrderedDict
 
