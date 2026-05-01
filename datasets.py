@@ -11,7 +11,7 @@ import cv2
 import os
 import random
 import numpy as np
-import lmdb
+# import lmdb  # unused
 import io
 import time
 from vidaug import augmentors as va
