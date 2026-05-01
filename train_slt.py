@@ -7,6 +7,7 @@ import torch.backends.cudnn as cudnn
 from torch.optim import lr_scheduler as scheduler
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
+from torch.amp import autocast, GradScaler
 
 
 # *transformers
@@ -375,16 +376,20 @@ def train_one_epoch(args, model: torch.nn.Module, criterion: nn.CrossEntropyLoss
     header = 'Epoch: [{}/{}]'.format(epoch, args.epochs)
     print_freq = 10
 
+    scaler = GradScaler('cuda')
+
     for step, (src_input, tgt_input) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
-        out_logits = model(src_input, tgt_input)
-        label = tgt_input['input_ids'].reshape(-1)
-        logits = out_logits.reshape(-1,out_logits.shape[-1])
-        loss = criterion(logits, label.to(device, non_blocking=True))
+        with autocast('cuda'):
+            out_logits = model(src_input, tgt_input)
+            label = tgt_input['input_ids'].reshape(-1)
+            logits = out_logits.reshape(-1,out_logits.shape[-1])
+            loss = criterion(logits, label.to(device, non_blocking=True))
 
         optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
 
         loss_value = loss.item()
         if not math.isfinite(loss_value):
@@ -416,20 +421,22 @@ def evaluate(args, dev_dataloader, model, model_without_ddp, tokenizer, criterio
  
         for step, (src_input, tgt_input) in enumerate(metric_logger.log_every(dev_dataloader, 10, header)):
 
-            out_logits = model(src_input, tgt_input)
-            total_loss = 0.0
-            label = tgt_input['input_ids'].reshape(-1)
-            
-            logits = out_logits.reshape(-1,out_logits.shape[-1])
-            tgt_loss = criterion(logits, label.to(device))
-            
-            total_loss += tgt_loss
+            with autocast('cuda'):
+                out_logits = model(src_input, tgt_input)
+                total_loss = 0.0
+                label = tgt_input['input_ids'].reshape(-1)
+                
+                logits = out_logits.reshape(-1,out_logits.shape[-1])
+                tgt_loss = criterion(logits, label.to(device))
+                
+                total_loss += tgt_loss
 
             metric_logger.update(loss=total_loss.item())
             
-            output = model_without_ddp.generate(src_input, max_new_tokens=150, num_beams = 4,
-                        decoder_start_token_id=tokenizer.lang_code_to_id['vi_VN']
-                        )
+            with autocast('cuda'):
+                output = model_without_ddp.generate(src_input, max_new_tokens=150, num_beams = 4,
+                            decoder_start_token_id=tokenizer.lang_code_to_id['vi_VN']
+                            )
 
             tgt_input['input_ids'] = tgt_input['input_ids'].to(device)
             for i in range(len(output)):
