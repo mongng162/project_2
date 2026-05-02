@@ -79,10 +79,16 @@ new_vocab_size = len(used_ids)
 old_embed = model.model.shared.weight.data
 new_embed = old_embed[used_ids]
 
+# Create independent embedding layers (NOT shared references)
+# so they all get saved separately when tie_word_embeddings=False
 model.model.shared = torch.nn.Embedding(new_vocab_size, new_embed.shape[1])
-model.model.shared.weight.data = new_embed
-model.model.encoder.embed_tokens = model.model.shared
-model.model.decoder.embed_tokens = model.model.shared
+model.model.shared.weight.data = new_embed.clone()
+
+model.model.encoder.embed_tokens = torch.nn.Embedding(new_vocab_size, new_embed.shape[1])
+model.model.encoder.embed_tokens.weight.data = new_embed.clone()
+
+model.model.decoder.embed_tokens = torch.nn.Embedding(new_vocab_size, new_embed.shape[1])
+model.model.decoder.embed_tokens.weight.data = new_embed.clone()
 
 # Trim LM head
 old_lm_head = model.lm_head.weight.data
@@ -109,7 +115,12 @@ configuration.vocab_size = new_vocab_size
 configuration.tie_word_embeddings = False
 
 mytran_model = MBartForConditionalGeneration._from_config(config=configuration)
-mytran_model.model.shared = model.model.shared
+mytran_model.model.shared = torch.nn.Embedding(new_vocab_size, new_embed.shape[1])
+mytran_model.model.shared.weight.data = new_embed.clone()
+mytran_model.model.encoder.embed_tokens = torch.nn.Embedding(new_vocab_size, new_embed.shape[1])
+mytran_model.model.encoder.embed_tokens.weight.data = new_embed.clone()
+mytran_model.model.decoder.embed_tokens = torch.nn.Embedding(new_vocab_size, new_embed.shape[1])
+mytran_model.model.decoder.embed_tokens.weight.data = new_embed.clone()
 mytran_model.save_pretrained('pretrain_models/mytran/')
 
 print(f"\n✅ Done! Trimmed vocab: {new_vocab_size} tokens")

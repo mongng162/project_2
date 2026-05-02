@@ -237,9 +237,24 @@ class S2T_Dataset(Dataset.Dataset):
     def _remap_ids(self, input_ids):
         """Remap original MBart token IDs to trimmed vocabulary IDs."""
         remapped = input_ids.clone()
-        for old_id, new_id in self.id_mapping.items():
-            remapped[input_ids == old_id] = new_id
-        return remapped
+        # Build a lookup table for fast remapping
+        if not hasattr(self, '_remap_table'):
+            max_id = max(self.id_mapping.keys()) + 1
+            self._remap_table = torch.full((max_id,), -1, dtype=torch.long)
+            for old_id, new_id in self.id_mapping.items():
+                self._remap_table[old_id] = new_id
+        
+        flat = input_ids.flatten()
+        result = torch.zeros_like(flat)
+        for i in range(len(flat)):
+            oid = flat[i].item()
+            if oid < len(self._remap_table) and self._remap_table[oid] >= 0:
+                result[i] = self._remap_table[oid]
+            else:
+                # Unmapped token — map to pad (0) to avoid crash
+                logger.warning(f"Unmapped token ID {oid} found, mapping to 0 (pad)")
+                result[i] = 0
+        return result.reshape(input_ids.shape)
 
     def __str__(self):
         return f'#total {self.phase} set: {len(self.list)}.'
