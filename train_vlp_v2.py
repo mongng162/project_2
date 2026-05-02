@@ -358,7 +358,7 @@ def train_one_epoch(args, model: torch.nn.Module, criterion: nn.CrossEntropyLoss
     for step, (src_input, tgt_input, masked_tgt_input) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         optimizer.zero_grad()
-        with torch.cuda.amp.autocast():
+        with torch.amp.autocast('cuda'):
             logits_per_image, logits_per_text, ground_truth = model(src_input, tgt_input)
             loss_imgs = loss_img(logits_per_image,ground_truth)
             loss_texts = loss_txt(logits_per_text,ground_truth)
@@ -368,7 +368,7 @@ def train_one_epoch(args, model: torch.nn.Module, criterion: nn.CrossEntropyLoss
         # update the text decoder parames
         if step % 5 == 0:
             TD_train_dict['optimizer'].zero_grad()
-            with torch.cuda.amp.autocast():
+            with torch.amp.autocast('cuda'):
                 lm_logits = TD_train_dict['text_decoder'](tgt_input, masked_tgt_input, model.module.model_txt)
                 masked_lm_loss = loss_fct(lm_logits.view(-1, lm_logits.shape[-1]), tgt_input['input_ids'].to(device).view(-1)) * args.loss_lambda
             loss_scaler(masked_lm_loss, TD_train_dict['optimizer'])
